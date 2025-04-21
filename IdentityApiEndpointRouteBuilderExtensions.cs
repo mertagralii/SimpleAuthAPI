@@ -17,7 +17,9 @@ using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-
+using SimpleAuthAPI.Model.Dtos.User;
+using SimpleAuthAPI.Model.Entities;
+// Hazır gelen Identity Enponilerini buradan özelleştiriyoruz.
 namespace Microsoft.AspNetCore.Routing;
 
 /// <summary>
@@ -37,8 +39,8 @@ public static class IdentityApiEndpointRouteBuilderExtensions
     /// Call <see cref="EndpointRouteBuilderExtensions.MapGroup(IEndpointRouteBuilder, string)"/> to add a prefix to all the endpoints.
     /// </param>
     /// <returns>An <see cref="IEndpointConventionBuilder"/> to further customize the added endpoints.</returns>
-    public static IEndpointConventionBuilder MapIdentityApi<TUser>(this IEndpointRouteBuilder endpoints)
-        where TUser : class, new()
+    public static IEndpointConventionBuilder MyMapIdentityApi<TUser>(this IEndpointRouteBuilder endpoints)
+        where TUser : ApplicationUser, new()
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
@@ -55,13 +57,13 @@ public static class IdentityApiEndpointRouteBuilderExtensions
         // NOTE: We cannot inject UserManager<TUser> directly because the TUser generic parameter is currently unsupported by RDG.
         // https://github.com/dotnet/aspnetcore/issues/47338
         routeGroup.MapPost("/register", async Task<Results<Ok, ValidationProblem>>
-            ([FromBody] RegisterRequest registration, HttpContext context, [FromServices] IServiceProvider sp) =>
+            ([FromBody] RegisterDto registration, HttpContext context, [FromServices] IServiceProvider sp) =>
         {
             var userManager = sp.GetRequiredService<UserManager<TUser>>();
 
             if (!userManager.SupportsUserEmail)
             {
-                throw new NotSupportedException($"{nameof(MapIdentityApi)} requires a user store with email support.");
+                throw new NotSupportedException($"{nameof(MyMapIdentityApi)} requires a user store with email support.");
             }
 
             var userStore = sp.GetRequiredService<IUserStore<TUser>>();
@@ -186,7 +188,7 @@ public static class IdentityApiEndpointRouteBuilderExtensions
         .Add(endpointBuilder =>
         {
             var finalPattern = ((RouteEndpointBuilder)endpointBuilder).RoutePattern.RawText;
-            confirmEmailEndpointName = $"{nameof(MapIdentityApi)}-{finalPattern}";
+            confirmEmailEndpointName = $"{nameof(MyMapIdentityApi)}-{finalPattern}";
             endpointBuilder.Metadata.Add(new EndpointNameMetadata(confirmEmailEndpointName));
         });
 
