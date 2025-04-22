@@ -13,4 +13,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser> // Normalde Ident
     {
         
     }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        
+    }
 }
