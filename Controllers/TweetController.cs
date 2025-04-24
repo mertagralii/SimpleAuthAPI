@@ -1,9 +1,14 @@
+using System.Net;
+using System.Net.Mail;
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SimpleAuthAPI.Database;
+using SimpleAuthAPI.Model.Dtos.Comment;
 using SimpleAuthAPI.Model.Dtos.Tweet;
+using SimpleAuthAPI.Model.Dtos.User;
 using SimpleAuthAPI.Model.Entities;
 
 namespace SimpleAuthAPI.Controllers;
@@ -31,7 +36,9 @@ public class TweetController : ControllerBase
     [HttpGet("[action]")]
     public ActionResult<TweetDto[]> AllTweet()
     {
-        var allTweets = _context.Tweets.Include(x=> x.User)
+        var allTweets = _context.Tweets
+            .Include(x=> x.Comments)
+            .Include(x=> x.User)
             .ToArray();
         if (allTweets.Length == 0)
         {
@@ -40,7 +47,6 @@ public class TweetController : ControllerBase
         var result = _mapper.Map<TweetDto[]>(allTweets);
         return Ok(result);
     }
-    
     /*
      * Önemli Not
      * ActionResult<TweetDto[]> ile IAcitonResult arasındaki farklar
@@ -66,4 +72,150 @@ public class TweetController : ControllerBase
      */
     
     #endregion
+
+    #region Tweet Getirme Kısmı
+
+    [HttpGet("[action]")]
+    public ActionResult<TweetDto[]> GetTweets(int id)
+    {
+        var selectedTweet = _context.Tweets
+            .Include(x=> x.User)
+            .Include(x=> x.Comments)
+            .FirstOrDefault(x=>x.Id == id);
+        if (selectedTweet == null)
+        {
+            return NotFound("Tweet not found");
+        }
+        var result = _mapper.Map<TweetDto>(selectedTweet);
+        return Ok(result);
+    }
+
+    #endregion
+
+    #region Tweet Atma Kısmı
+    [Authorize]
+    [HttpPost("[action]")]
+    public ActionResult<AddTweetDto> AddTweet(AddTweetDto addTweetDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var userId = _userManager.GetUserId(User);
+        var addedTweet = _mapper.Map<Tweet>(addTweetDto);
+        addedTweet.UserId = userId;
+        _context.Tweets.Add(addedTweet);
+        _context.SaveChanges();
+        var result = _mapper.Map<TweetDto>(addedTweet);
+        return Ok(result);
+    }
+
+    #endregion
+
+    #region Tweet Güncelleme Kısmı
+    
+    [Authorize]
+    [HttpPut("[action]")]
+    public ActionResult<TweetDto> UpdateTweet(UpdateTweetDto updateTweetDto)
+    {
+        var selectedTweet = _context.Tweets.FirstOrDefault(x=>x.Id == updateTweetDto.Id);
+        if (selectedTweet == null)
+        {
+            return NotFound("Tweet not found");
+        }
+        var userId = _userManager.GetUserId(User);
+        if (selectedTweet.UserId != userId)
+        {
+            return Unauthorized();
+        }
+        selectedTweet.Text = updateTweetDto.Text;
+        var results = _mapper.Map<Tweet>(selectedTweet);
+        results.ModifiedDate = DateTime.Now;
+        _context.SaveChanges();
+        var result = _mapper.Map<TweetDto>(selectedTweet);
+        return Ok(result);
+    }
+
+    #endregion
+
+    #region Tweet Silme Kısmı
+    [Authorize]
+    [HttpDelete("[action]")]
+    public ActionResult<TweetDto> DeleteTweet(int id)
+    {
+        var selectedTweet = _context.Tweets.FirstOrDefault(x=>x.Id == id);
+        if (selectedTweet == null)
+        {
+            return NotFound("Tweet not found");
+        }
+        var userId = _userManager.GetUserId(User);
+        if (selectedTweet.UserId != userId)
+        {
+            return Unauthorized();
+        }
+        _context.Tweets.Remove(selectedTweet);
+        _context.SaveChanges();
+        var result = _mapper.Map<TweetDto>(selectedTweet);
+        return Ok(result);
+       
+    }
+
+    #endregion
+
+    #region Tweet'e yorum atma Kısmı
+    
+    [Authorize]
+    [HttpPost("[action]")]
+    public ActionResult<AddCommentDto> AddComment(AddCommentDto addCommentDto)
+    {
+        var userId = _userManager.GetUserId(User);
+        var addedComment = _mapper.Map<Comment>(addCommentDto);
+        addedComment.UserId = userId;
+        _context.Comments.Add(addedComment);
+        _context.SaveChanges();
+        var result = _mapper.Map<Comment>(addedComment);
+        return Ok(result);
+    }
+
+    #endregion
+
+    #region Mail Gönderme Kısmı 
+    [Authorize]
+    [HttpPost("[action]")]
+    public async Task<ActionResult> SendEmail(ApplicationUserDto applicationUserDto)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+        var client = new SmtpClient();
+        client.Host = "smtp.resend.com";
+        client.Port = 587;
+        client.EnableSsl = true;
+        client.Credentials = new NetworkCredential("resend", "re_fHuYHaVw_CLEvwj2VFHq7A6UfiqMMnkFh");
+        var message = new MailMessage();
+        message.To.Add(new MailAddress($"{applicationUserDto.Email}", $"{applicationUserDto.FirstName}{applicationUserDto.LastName}"));
+        message.From = new MailAddress("noreply@bildirim.akademiprojeler.com", "Akademi Projeler");
+        message.Subject = $"Merhaba {applicationUserDto.FirstName} {applicationUserDto.LastName} ";
+        message.Body = "Mesaj İçeriği";
+        try
+        {
+            await client.SendMailAsync(message);
+
+        }
+        catch
+        {
+
+        }
+
+        message.Dispose();
+        client.Dispose();
+        return Ok();
+    }
+
+    #endregion
+    
+    
 }

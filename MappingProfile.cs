@@ -17,6 +17,8 @@ public class MappingProfile : Profile // Mapper'de mapleme işlemleri yaparken M
         CreateMap<ApplicationUser,IdentityUser>().ReverseMap();
         CreateMap<AddTweetDto,Tweet>().ReverseMap();
         CreateMap<ApplicationUser,ApplicationUserDto>().ReverseMap();
+        CreateMap<TweetDto[], Tweet>().ReverseMap();
+        CreateMap<AddCommentDto, Comment>().ReverseMap();
     }
     
 }

@@ -10,5 +10,7 @@ public class ApplicationUser : IdentityUser // IdentityUser'den kalıtım yapıy
     
     public DateTime CreatedDate { get; set; } = DateTime.Now; // Kullanıcımızın artık hesap oluşturma tarihi var.
     
+    public DateTime ModifiedDate { get; set; } // Kullanıcımız hesabında bir güncelleme yaparsa güncelleme tarihi de var.
+    
     // Kısaca IdentityUser'de bulunan kolonlara yeni özellikler ekleyerek özelleştirdik.
 }

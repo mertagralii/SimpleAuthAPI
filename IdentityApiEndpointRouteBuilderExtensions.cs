@@ -7,6 +7,8 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
+using SimpleAuthAPI.Model.Dtos.User;
+using SimpleAuthAPI.Model.Entities;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -17,9 +19,7 @@ using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using SimpleAuthAPI.Model.Dtos.User;
-using SimpleAuthAPI.Model.Entities;
-// Hazır gelen Identity Enponilerini buradan özelleştiriyoruz.
+
 namespace Microsoft.AspNetCore.Routing;
 
 /// <summary>
@@ -75,7 +75,11 @@ public static class IdentityApiEndpointRouteBuilderExtensions
                 return CreateValidationProblem(IdentityResult.Failed(userManager.ErrorDescriber.InvalidEmail(email)));
             }
 
-            var user = new TUser();
+            var user = new TUser
+            {
+                FirstName = registration.FirstName,
+                LastName = registration.LastName,
+            };
             await userStore.SetUserNameAsync(user, email, CancellationToken.None);
             await emailStore.SetEmailAsync(user, email, CancellationToken.None);
             var result = await userManager.CreateAsync(user, registration.Password);
